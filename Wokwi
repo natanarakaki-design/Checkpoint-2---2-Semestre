@@ -1,0 +1,335 @@
+{
+  "version": 1,
+  "author": "Natan Arakaki",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": { "env": "micropython-20260406-v1.28.0" }
+    },
+    {
+      "type": "wokwi-lcd2004",
+      "id": "lcd1",
+      "top": -128,
+      "left": 149.6,
+      "attrs": { "pins": "i2c" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "lcd1:VCC", "red", [ "h-14.21", "v-105.6" ] ],
+    [ "esp:GND.2", "lcd1:GND", "black", [ "v-124.8", "h4.84" ] ],
+    [ "lcd1:SDA", "esp:21", "gold", [ "h-28.8", "v0.2" ] ],
+    [ "esp:22", "lcd1:SCL", "green", [ "h14.44", "v-115.2" ] ]
+  ],
+  "dependencies": {}
+}
+from lcd_api import LcdApi
+from time import sleep_ms
+
+MASK_RS = 0x01
+MASK_E = 0x04
+
+SHIFT_BACKLIGHT = 3
+SHIFT_DATA = 4
+
+class I2cLcd(LcdApi):
+
+    def __init__(self, i2c, i2c_addr, num_lines, num_columns):
+        self.i2c = i2c
+        self.i2c_addr = i2c_addr
+
+        self.i2c.writeto(self.i2c_addr, bytearray([0]))
+        sleep_ms(20)
+
+        self.hal_write_init_nibble(0x30)
+        sleep_ms(5)
+
+        self.hal_write_init_nibble(0x30)
+        sleep_ms(1)
+
+        self.hal_write_init_nibble(0x30)
+        sleep_ms(1)
+
+        self.hal_write_init_nibble(0x20)
+        sleep_ms(1)
+
+        LcdApi.__init__(self, num_lines, num_columns)
+
+        self.hal_write_command(0x28)
+        self.hal_write_command(0x0C)
+        self.hal_write_command(0x06)
+
+        self.clear()
+
+    def hal_write_init_nibble(self, nibble):
+        byte = ((nibble >> 4) << SHIFT_DATA) | (1 << SHIFT_BACKLIGHT)
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte | MASK_E])
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte])
+        )
+
+    def hal_write_command(self, cmd):
+        byte = (
+            ((cmd >> 4) & 0x0F) << SHIFT_DATA
+        ) | (1 << SHIFT_BACKLIGHT)
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte | MASK_E])
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte])
+        )
+
+        byte = (
+            (cmd & 0x0F) << SHIFT_DATA
+        ) | (1 << SHIFT_BACKLIGHT)
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte | MASK_E])
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte])
+        )
+
+    def hal_write_data(self, data):
+        byte = (
+            MASK_RS |
+            (((data >> 4) & 0x0F) << SHIFT_DATA) |
+            (1 << SHIFT_BACKLIGHT)
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte | MASK_E])
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte])
+        )
+
+        byte = (
+            MASK_RS |
+            ((data & 0x0F) << SHIFT_DATA) |
+            (1 << SHIFT_BACKLIGHT)
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte | MASK_E])
+        )
+
+        self.i2c.writeto(
+            self.i2c_addr,
+            bytearray([byte])
+        )
+
+import time
+
+class LcdApi:
+    LCD_CLR = 0x01
+    LCD_HOME = 0x02
+
+    LCD_ENTRY_MODE = 0x04
+    LCD_ENTRY_INC = 0x02
+
+    LCD_ON_CTRL = 0x08
+    LCD_ON_DISPLAY = 0x04
+    LCD_ON_CURSOR = 0x02
+    LCD_ON_BLINK = 0x01
+
+    LCD_MOVE = 0x10
+    LCD_MOVE_DISP = 0x08
+    LCD_MOVE_RIGHT = 0x04
+
+    LCD_FUNCTION = 0x20
+    LCD_FUNCTION_8BIT = 0x10
+    LCD_FUNCTION_2LINES = 0x08
+    LCD_FUNCTION_10DOTS = 0x04
+
+    LCD_CGRAM = 0x40
+    LCD_DDRAM = 0x80
+
+    LCD_RS_CMD = 0
+    LCD_RS_DATA = 1
+
+    LCD_RW_WRITE = 0
+    LCD_RW_READ = 1
+
+    def __init__(self, num_lines, num_columns):
+        self.num_lines = min(num_lines, 4)
+        self.num_columns = min(num_columns, 40)
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def clear(self):
+        self.hal_write_command(self.LCD_CLR)
+        self.hal_write_command(self.LCD_HOME)
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def move_to(self, cursor_x, cursor_y):
+        self.cursor_x = cursor_x
+        self.cursor_y = cursor_y
+
+        addr = cursor_x & 0x3F
+
+        if cursor_y & 1:
+            addr += 0x40
+
+        if cursor_y & 2:
+            addr += self.num_columns
+
+        self.hal_write_command(self.LCD_DDRAM | addr)
+
+    def putchar(self, char):
+        if char == '\n':
+            self.cursor_x = self.num_columns
+        else:
+            self.hal_write_data(ord(char))
+            self.cursor_x += 1
+
+        if self.cursor_x >= self.num_columns:
+            self.cursor_x = 0
+            self.cursor_y += 1
+
+            if self.cursor_y >= self.num_lines:
+                self.cursor_y = 0
+
+            self.move_to(self.cursor_x, self.cursor_y)
+
+    def putstr(self, string):
+        for char in string:
+            self.putchar(char)
+
+    def hal_write_command(self, cmd):
+        raise NotImplementedError
+
+    def hal_write_data(self, data):
+        raise NotImplementedError
+
+import network
+import urequests
+import time
+import json
+from machine import Pin, I2C
+from i2c_lcd import I2cLcd
+from umqtt.simple import MQTTClient
+
+# --- Configurações do Wi-Fi ---
+SSID = "Wokwi-GUEST"
+PASSWORD = ""
+
+# --- Configurações da OpenWeather ---
+API_KEY = "95b9032223fe7edc7bab00e20dc102a0"
+CIDADE = "Sao%20Paulo"
+URL = f"https://api.openweathermap.org/data/2.5/weather?q={CIDADE}&appid={API_KEY}&units=metric&lang=pt_br"
+
+# --- Configurações MQTT ---
+MQTT_BROKER = "broker.hivemq.com"
+MQTT_PORT = 1883
+MQTT_CLIENT_ID = "esp32_fiap_01"
+MQTT_TOPIC = "fiap/iot/grupo01/clima"
+
+# --- Inicialização do I2C e LCD ---
+i2c = I2C(0, sda=Pin(21), scl=Pin(22), freq=400000)
+lcd = I2cLcd(i2c, 0x27, 4, 20)
+
+# --- Conexão Wi-Fi ---
+wifi = network.WLAN(network.STA_IF)
+wifi.active(True)
+wifi.connect(SSID, PASSWORD)
+
+lcd.clear()
+lcd.putstr("Conectando Wi-Fi...")
+
+while not wifi.isconnected():
+    time.sleep(0.5)
+
+lcd.clear()
+lcd.putstr("Wi-Fi Conectado!")
+time.sleep(1)
+
+# --- Conexão MQTT ---
+lcd.clear()
+lcd.putstr("Conectando MQTT...")
+client = MQTTClient(MQTT_CLIENT_ID, MQTT_BROKER, port=MQTT_PORT)
+client.connect()
+
+lcd.clear()
+lcd.putstr("MQTT Conectado!")
+time.sleep(1)
+
+# --- Loop Principal ---
+while True:
+    try:
+        response = urequests.get(URL)
+        
+        if response.status_code == 200:
+            dados = response.json()
+            
+            cidade = str(dados["name"])
+            temp = float(dados["main"]["temp"])
+            umidade = int(dados["main"]["humidity"])
+            descricao = str(dados["weather"][0]["description"])
+            
+            response.close()
+
+            # 1. Atualização do LCD 20x4
+            lcd.clear()
+            lcd.move_to(0, 0)
+            lcd.putstr(f"Cidade: {cidade[:12]}")
+            
+            lcd.move_to(0, 1)
+            lcd.putstr(f"Temp: {temp:.1f} C")
+            
+            lcd.move_to(0, 2)
+            lcd.putstr(f"Umidade: {umidade}%")
+            
+            lcd.move_to(0, 3)
+            # Remove acentos para garantir exibição correta no LCD
+            lcd.putstr(f"Tempo: {descricao[:13]}")
+
+            # 2. Criação do Dicionário/JSON estruturado
+            payload = {
+                "cidade": cidade,
+                "temperatura": temp,
+                "umidade": umidade,
+                "condicao": descricao
+            }
+            
+            # Converte para JSON e garante codificação em bytes UTF-8 para o MQTT
+            json_str = json.dumps(payload)
+            client.publish(MQTT_TOPIC, json_str.encode('utf-8'))
+            
+            print("Publicado com sucesso:", json_str)
+            
+        else:
+            print("Erro na API OpenWeather. Status:", response.status_code)
+            response.close()
+
+    except Exception as e:
+        print("Erro durante a execucao:", e)
+
+    # Tempo entre atualizações
+    time.sleep(30)
+Downloaded from https://wokwi.com/projects/474599876659987457
+
+Simulate this project on https://wokwi.com
