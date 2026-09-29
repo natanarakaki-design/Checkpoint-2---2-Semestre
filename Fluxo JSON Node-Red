@@ -1,5 +1,13 @@
 [
     {
+        "id": "9e53c0a188058e91",
+        "type": "tab",
+        "label": "Clima ESP32",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "0786545694bc480b",
         "type": "mqtt in",
         "z": "9e53c0a188058e91",
@@ -19,6 +27,59 @@
                 "e720a804e2200145"
             ]
         ]
+    },
+    {
+        "id": "e720a804e2200145",
+        "type": "json",
+        "z": "9e53c0a188058e91",
+        "name": "Converter JSON",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 370,
+        "y": 420,
+        "wires": [
+            [
+                "58e504a9730f49d6"
+            ]
+        ]
+    },
+    {
+        "id": "58e504a9730f49d6",
+        "type": "function",
+        "z": "9e53c0a188058e91",
+        "name": "Formatar Texto",
+        "func": "var dados = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n\nmsg.payload = `DADOS METEOROLÓGICOS\\n` +\n              `Cidade: ${dados.cidade}\\n` +\n              `Temperatura: ${dados.temperatura} °C\\n` +\n              `Umidade: ${dados.umidade}%\\n` +\n              `Condição: ${dados.condicao}`;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 420,
+        "wires": [
+            [
+                "a154db223d90090b"
+            ]
+        ]
+    },
+    {
+        "id": "a154db223d90090b",
+        "type": "debug",
+        "z": "9e53c0a188058e91",
+        "name": "Output Console",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 420,
+        "wires": []
     },
     {
         "id": "d52e711810353783",
