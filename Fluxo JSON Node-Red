@@ -1,0 +1,54 @@
+[
+    {
+        "id": "0786545694bc480b",
+        "type": "mqtt in",
+        "z": "9e53c0a188058e91",
+        "name": "Receber Clima",
+        "topic": "fiap/iot/grupo01/clima",
+        "qos": "0",
+        "datatype": "utf8",
+        "broker": "d52e711810353783",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 420,
+        "wires": [
+            [
+                "e720a804e2200145"
+            ]
+        ]
+    },
+    {
+        "id": "d52e711810353783",
+        "type": "mqtt-broker",
+        "name": "HiveMQ",
+        "broker": "broker.hivemq.com",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
