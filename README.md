@@ -7,6 +7,8 @@ Integrantes do Grupo:
 
 **Turma:** 1EMA
 
+Link do Wokwi: https://wokwi.com/projects/474599876659987457 
+
 Este repositório contém os códigos e arquivos necessários para a resolução da tarefa "Checkpoint 2", baseada nas instruções do documento de referência **Atividade_ESP32_MicroPython_LCD_API_MQTT.pdf**.
 
 ## Descrição do Projeto
